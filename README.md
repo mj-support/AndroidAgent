@@ -36,15 +36,15 @@ To reconstruct the airplane-task, please follow the next steps. You can also con
 1. To configure your own Android Virtual Device (AVD) you need to open Android Studio.
 2. Click on 'More Actions' in the 'Welcome to Android Studio'-welcome menu and select 'Virtual Device Manager'.
 3. Create a new virtual device by clicking on the '+'
-4. To reconstruct the airplan task: select 'Pixel 2' as hardware, 'VanillaIceCream' as system image and use 'my_avd' as AVD name and click 'Finish'
+4. Select 'Pixel 2' as hardware, 'VanillaIceCream' as system image and use 'my_avd' as AVD name and click 'Finish'
 
 #### Launch emulator
 
 ```shell
-$ emulator -avd Medium_Phone_API_35 -no-boot-anim -netdelay none -no-snapshot -wipe-data -verbose -no-audio -gpu swiftshader_indirect -no-snapshot -read-only -partition-size 512 &
+$ emulator -avd my_avd -no-boot-anim -netdelay none -no-snapshot -wipe-data -verbose -no-audio -gpu swiftshader_indirect -no-snapshot -read-only -partition-size 512 &
 
 # for headless mode
-$ emulator -avd Medium_Phone_API_35 -no-window -no-boot-anim -netdelay none -no-snapshot -wipe-data -verbose -no-audio -gpu swiftshader_indirect -no-snapshot -read-only -partition-size 512 &
+$ emulator -avd my_avd -no-window -no-boot-anim -netdelay none -no-snapshot -wipe-data -verbose -no-audio -gpu swiftshader_indirect -no-snapshot -read-only -partition-size 512 &
 
 # check your emulator-ID or look different for usable emulators 
 $ adb devices
