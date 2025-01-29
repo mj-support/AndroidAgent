@@ -31,7 +31,7 @@ $ source ~/.zshrc
 
 #### Setup Emulator
 
-To reconstruct the airplane-task, please follow the next steps. You can also configure your own Android Virtual Device (AVD) with your own settings instead, but in this case a successful agent can no longer be guaranteed. You can see the configured AVDs with ```$ emulator -list-avds```.
+To use ```models/airplane.zip```, please follow the next steps. You can also configure your own Android Virtual Device (AVD) with your own settings instead. In this case you might have to start a new training run to let the agent adapt to a the new evironment. You can see the configured AVDs with ```$ emulator -list-avds```.
 
 1. To configure your own Android Virtual Device (AVD) you need to open Android Studio.
 2. Click on 'More Actions' in the 'Welcome to Android Studio'-welcome menu and select 'Virtual Device Manager'.
