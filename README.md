@@ -1,4 +1,4 @@
-# AndroidAgent: Complete Task in Android OS using Reinforcement Learning
+# AndroidAgent: Task completion in Android OS using Reinforcement Learning
 
 ## Getting Started
 
