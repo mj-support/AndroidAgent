@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-### Installation
+### Prepare Python environment
 
 Install the python environment as follows:
 
@@ -13,7 +13,7 @@ $ conda env create -f environment.yml
 $ conda activate AndroidAgent
 ```
 
-### Prepare Android environment
+### Install Android packages
 
 Download and install [Android Studio](https://developer.android.com/studio) as it contains the necessary SDK, ADB and emulator tools. Add ADB and the Android emulator to ```$PATH``` to simplify the usage:
 
