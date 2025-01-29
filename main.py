@@ -6,6 +6,8 @@ def train(env, task):
     model = DQN("MultiInputPolicy", env=env, verbose=1, learning_rate=0.001, gamma=0.99, exploration_fraction=0.3)
     model.learn(total_timesteps=2500)
     model.save(f"models/{task}.zip")
+    print(f"Finished training - model saved in models/{task}.zip")
+    print("")
 
 def predict(env, task):
     model_path = f"models/{task}.zip"
@@ -14,7 +16,7 @@ def predict(env, task):
     obs = vec_env.reset()
 
     # Test model
-    print(f"'{model_path}' Model loaded successfully. Start testing...")
+    print(f"'{model_path}' Model loaded successfully - start testing...")
 
     for _ in range(100):
         action, _states = model.predict(obs, deterministic=True)
