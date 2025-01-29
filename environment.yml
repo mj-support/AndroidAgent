@@ -1,0 +1,10 @@
+name: AndroidAgent
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - gymnasium==1.0.0
+      - stable-baselines3==2.4.0
