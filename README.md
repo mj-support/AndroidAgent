@@ -29,10 +29,16 @@ $ echo 'export PATH=$PATH:~/Library/Android/Sdk/emulator' >> ~/.zshrc
 $ source ~/.zshrc
 ```
 
-### Setup & launch emulator
-Per default ```Medium_Phone_API_35``` is already installed as an Android Virtual Device (AVD) but you can still configure your own device with Android Studio via the "Virtual Device Manager".
-You can see the installed AVDs with ```$ emulator -list-avds```.
-Use the following command to start the emulator based on the configured AVD.
+#### Setup Emulator
+
+To reconstruct the airplane-task, please follow the next steps. You can also configure your own Android Virtual Device (AVD) with your own settings instead, but in this case a successful agent can no longer be guaranteed. You can see the configured AVDs with ```$ emulator -list-avds```.
+
+1. To configure your own Android Virtual Device (AVD) you need to open Android Studio.
+2. Click on 'More Actions' in the 'Welcome to Android Studio'-welcome menu and select 'Virtual Device Manager'.
+3. Create a new virtual device by clicking on the '+'
+4. To reconstruct the airplan task: select 'Pixel 2' as hardware, 'VanillaIceCream' as system image and use 'my_avd' as AVD name and click 'Finish'
+
+#### Launch emulator
 
 ```shell
 $ emulator -avd Medium_Phone_API_35 -no-boot-anim -netdelay none -no-snapshot -wipe-data -verbose -no-audio -gpu swiftshader_indirect -no-snapshot -read-only -partition-size 512 &
