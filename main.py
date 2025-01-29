@@ -5,10 +5,10 @@ import environment
 def train(env, task):
     model = DQN("MultiInputPolicy", env=env, verbose=1, learning_rate=0.001, gamma=0.99, exploration_fraction=0.3)
     model.learn(total_timesteps=2500)
-    model.save(task)
+    model.save(f"models/{task}.zip")
 
 def predict(env, task):
-    model_path = f"{task}.zip"
+    model_path = f"models/{task}.zip"
     model = DQN.load(model_path, env)
     vec_env = model.get_env()
     obs = vec_env.reset()
