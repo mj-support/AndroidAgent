@@ -33,17 +33,19 @@ class AndroidEnv(gym.Env):
         # By default, the actions are tapping on the UI elements, additional gestures can be added if required.
         self.additional_gestures = {
             "swipe up": False,
-            "swipe right": False,   # not implemented
-            "swipe down": False,    # not implemented
-            "swipe left": False,    # not implemented
-            "touch & hold": False,  # not implemented
-            "drag & drop": False,   # not implemented
-            "type": False           # not implemented
+            "swipe right": False,       # not implemented
+            "swipe down": False,        # not implemented
+            "swipe from top": False,
+            "swipe left": False,        # not implemented
+            "touch & hold": False,      # not implemented
+            "drag & drop": False,       # not implemented
+            "type": False               # not implemented
         }
 
         # Enable specific gestures if the task requires them
         if task == "airplane":
             self.additional_gestures["swipe up"] = True
+            self.additional_gestures["swipe from top"] = True
             self.max_ui_options += 1
 
         self.ui_options = []    # List of UI elements
@@ -173,6 +175,13 @@ class AndroidEnv(gym.Env):
                         "index": len(self.ui_options),
                         "text": gesture,
                         "bounds": (540, 960, 540, 200)
+                    }
+                    self.ui_options.append(gesture_data)
+                elif gesture == "swipe from top":
+                    gesture_data = {
+                        "index": len(self.ui_options),
+                        "text": gesture,
+                        "bounds": (540, 0, 540, 960)
                     }
                     self.ui_options.append(gesture_data)
 
