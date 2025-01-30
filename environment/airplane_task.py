@@ -36,7 +36,7 @@ class AirplaneTask:
         Evaluates the reward based on the action text.
 
         Args:
-            action (str): The text label of the UI action selected by the agent.
+            action_text (str): The text label of the UI action selected by the agent.
 
         Returns:
             Tuple[int, bool]: reward, done
@@ -45,7 +45,7 @@ class AirplaneTask:
         done = False
 
         # Evaluate the action based on the action
-        if self.current_menu == "Home" and action_text == "swipe up":
+        if self.current_menu == "Home" and action_text == "swipe up" or action_text == "swipe from top":
             # First step: Swipe up from the home screen
             reward = 2
             # Avoid getting rewards for pointless swiping and only rewarding swiping in the home screen
