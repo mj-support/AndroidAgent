@@ -14,7 +14,7 @@ class AndroidEnv(gym.Env):
     such as enabling airplane mode. The agent performs actions based on UI elements.
     """
 
-    def __init__(self, emulator_id="emulator-5554", task="airplane", max_current_ui_options=16, max_steps_per_episode=15):
+    def __init__(self, emulator_id="emulator-5554", task="airplane", exploration_mode="full_exploration", episode_timesteps=15, max_current_ui_options=16):
         """
         Initializes and setups the Android environment.
 
@@ -24,13 +24,14 @@ class AndroidEnv(gym.Env):
                                           airplane mode. Defaults to "airplane".
             max_current_ui_options (int):         The maximum number of possible UI-options that can be processed.
                                           Defaults to 16.
-            max_steps_per_episode (int):  The maximum number of steps performed per episode. Defaults to 5.
+            episode_timesteps (int):  The maximum number of steps performed per episode. Defaults to 5.
         """
         self.emulator_id = emulator_id
         self.max_current_ui_options = max_current_ui_options
-        self.max_steps_per_episode = max_steps_per_episode
+        self.episode_timesteps = episode_timesteps
         self.max_text_length = 20
         self.max_total_ui_options = 5000
+        self.exploration_mode = exploration_mode
 
         # By default, the actions are tapping on the UI elements, additional gestures can be added if required.
         self.additional_gestures = {
@@ -45,13 +46,18 @@ class AndroidEnv(gym.Env):
         }
 
         # Enable specific gestures if the task requires them
+        # Assign the specific task required to access the correct reset and reward method
         if task == "airplane":
             #self.additional_gestures["swipe up"] = True
             self.additional_gestures["swipe from top"] = True
             self.max_current_ui_options += 1
+            self.token = "airplane"
+            self.task = AirplaneTask(emulator_id=emulator_id, token=self.token, exploration_mode=self.exploration_mode)
         if task == "youtube":
             self.additional_gestures["swipe up"] = True
             self.max_current_ui_options += 1
+            self.token = "Charlie\ bit\ my\ finger!\ ORIGINAL"
+            self.task = YoutubeTask(emulator_id=emulator_id, token=self.token, exploration_mode=self.exploration_mode)
 
         self.obs = {}
         self.obs_history = []# Current observation
@@ -65,16 +71,8 @@ class AndroidEnv(gym.Env):
         # Define the observation space
         self.observation_space = spaces.Dict({
             "ui_options": spaces.MultiDiscrete([self.max_total_ui_options] * self.max_current_ui_options),  # Aktuelle UI-Optionen
-            "history": spaces.MultiDiscrete([self.max_total_ui_options] * self.max_steps_per_episode)  # Vergangene Aktionen
+            "history": spaces.MultiDiscrete([self.max_total_ui_options] * self.episode_timesteps)  # Vergangene Aktionen
         })
-
-        # Assign the specific task required to access the correct reset and reward method
-        if task == 'airplane':
-            self.token = "airplane"
-            self.task = AirplaneTask(emulator_id=emulator_id, token=self.token)
-        if task == 'youtube':
-            self.token = "Charlie\ bit\ my\ finger!\ ORIGINAL"
-            self.task = YoutubeTask(emulator_id=emulator_id, token=self.token)
 
         print("Initializing emulator: {0}".format(emulator_id))
 
@@ -106,7 +104,7 @@ class AndroidEnv(gym.Env):
 
         self.obs = {
             "ui_options": np.zeros(self.max_current_ui_options, dtype=np.int32),
-            "history": np.zeros(self.max_steps_per_episode, dtype=np.int32)
+            "history": np.zeros(self.episode_timesteps, dtype=np.int32)
         }
 
         self._get_obs() # Populate the initial observation
@@ -134,93 +132,30 @@ class AndroidEnv(gym.Env):
         self.obs_history[-1]["action_text"] = action_text
         self.obs_history[-1]["ui_option_id"] = None
 
-        if isinstance(self.task, YoutubeTask):
-            if action_eval == "valid":
-                self.obs_history[-1]["ui_option_id"] = self.ui_options_current[action]["id"]
-                reward, done = self.task.get_reward(self.obs_history, self.ui_options_current)    # Get the reward from the task for the chosen action
-                if reward > 0:
-                    if action_text == "Power menu" or action_text == "Emergency":
-                        reward = -3
-                    else:
-                        self._perform_action(bounds)   # Perform the action on the emulator if valid
-                        self._get_obs()   # Get new observation
-                else:
-                    if reward < 0:
-                        action_eval = "wrong"
-            else:
-                reward = -1
-            #    done = False
+        if action_eval == "valid":
+            self.obs_history[-1]["ui_option_id"] = self.ui_options_current[action]["id"]
+            reward, done = self.task.get_reward(self.obs_history, self.ui_options_current)
 
-            if action_text.startswith("swipe"):
-                print("{0} action is {1} -> {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
-            else:
-                print("{0} action is {1} -> TAP {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
-
-            # Mark the episodes as done if negative award is given to force reset
-            #if reward < 0:
-            #    done = True
-            #output = subprocess.run(["adb", "-s", self.emulator_id, "shell", "settings", "get", "global", "airplane_mode_on"],
-            #               capture_output=True, text=True, check=True)
-            #airplane_mode = output.stdout.strip()
-
-            #if airplane_mode == "1":
-            #    print("Yay finished!!")
-            #    reward = 100
-            #    done = True
-
-            if done:
-                reward -= 2 * self.current_step
-                #time.sleep(4)
-
-            # Terminate the episode if the maximum steps are reached
-            if self.current_step == self.max_steps_per_episode:
-                done = True
-
+            if action_text != "Power menu" and action_text != "Emergency":
+                if reward > 0 or self.exploration_mode == "full_exploration" or self.exploration_mode == "guided_open":
+                    self._perform_action(bounds)  # Perform the action on the emulator if valid
+                    self._get_obs()  # Get new observation
+                elif self.exploration_mode == "guided_restricted":
+                    action_eval = "wrong"
         else:
-            if action_eval == "valid":
-                self.obs_history[-1]["ui_option_id"] = self.ui_options_current[action]["id"]
-                #reward, done = self.task.get_reward(self.obs_history,
-                #                                    self.ui_options_current)  # Get the reward from the task for the chosen action
-                if reward < 0:
-                    if action_text == "Power menu" or action_text == "Emergency":
-                        reward = -3
-                    else:
-                        self._perform_action(bounds)  # Perform the action on the emulator if valid
-                        self._get_obs()  # Get new observation
-                #else:
-                #    if reward < 0:
-                #        action_eval = "wrong"
-            else:
-                reward = -3
-            #    done = False
+            reward = -3
 
+        if action_text.startswith("swipe"):
+            print("{0} action is {1} -> {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
+        else:
+            print("{0} action is {1} -> TAP {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
 
-            if action_text.startswith("swipe"):
-                print("{0} action is {1} -> {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
-            else:
-                print("{0} action is {1} -> TAP {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
+        if done:
+            reward -= 2 * self.current_step
 
-            # Mark the episodes as done if negative award is given to force reset
-            # if reward < 0:
-            #    done = True
-            output = subprocess.run(["adb", "-s", self.emulator_id, "shell", "settings", "get", "global", "airplane_mode_on"],
-                           capture_output=True, text=True, check=True)
-            airplane_mode = output.stdout.strip()
-
-            reward = 0
-
-            if airplane_mode == "1":
-                print("Yay finished!!")
-                reward = 100
-                done = True
-
-            if done:
-                reward -= 2 * self.current_step
-                #time.sleep(2)
-
-            # Terminate the episode if the maximum steps are reached
-            if self.current_step == self.max_steps_per_episode:
-                done = True
+        # Terminate the episode if the maximum steps are reached
+        if self.current_step == self.episode_timesteps:
+            done = True
 
         return self.obs, reward, done, False, {}
 
