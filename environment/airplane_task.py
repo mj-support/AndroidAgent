@@ -1,5 +1,4 @@
 import os
-import subprocess
 
 class AirplaneTask:
     """
@@ -10,7 +9,7 @@ class AirplaneTask:
     Attributes:
         emulator_id (str): The ID of the emulator where the task is performed.
     """
-    def __init__(self, emulator_id, token=None):
+    def __init__(self, emulator_id, token=None, exploration_mode="full_exploration"):
         """
         Initializes the AirplaneTask instance.
 
@@ -19,6 +18,7 @@ class AirplaneTask:
         """
         self.emulator_id = emulator_id
         self.token = token
+        self.exploration_mode = exploration_mode
 
     def reset_task(self):
         """
@@ -50,94 +50,37 @@ class AirplaneTask:
         if len(obs_history) > 1:
             previous_action = obs_history[-2]['action_text']
 
-        # Evaluate the action based on the action
-        if package == "nexuslauncher" and action_text == "swipe up" and previous_action == "":
-        #if current_menu == "Home" and action_text == "swipe up":
-            # First step: Swipe up from the home screen
-            reward = 2
-            # Avoid getting rewards for pointless swiping and only rewarding swiping in the home screen
-            print("Yay4 first step made!")
-        elif action_text == "swipe from top":
-            if package == "systemui":
-                for ui_option in ui_options_current:
-                    if ui_option["text"] == "Airplane mode, Off":
-                        reward = -1
-                        break
-                else:
-                    reward = 12
-                print("Yay3 second step made!")
-            else:
+        if self.exploration_mode == "guided_restricted" or self.exploration_mode == "guided_open":
+            # Evaluate the action based on the action
+            if package == "nexuslauncher" and action_text == "swipe up" and previous_action == "":
+            #if current_menu == "Home" and action_text == "swipe up":
+                # First step: Swipe up from the home screen
                 reward = 2
-                print("Yay3 first step made!")
-        elif action_text == "Settings":
-            # Second step: Tap "Settings"
-            reward = 4
-            print("Yay4 second step made!")
-        elif package == "settings" and action_text == "Network & internet":
-            # Third step: Tap "Network & internet"
-            reward = 8
-            print("Yay4 third step made!")
+                # Avoid getting rewards for pointless swiping and only rewarding swiping in the home screen
+                print("Yay4 first step made!")
+            elif action_text == "swipe from top":
+                if package == "systemui":
+                    for ui_option in ui_options_current:
+                        if ui_option["text"] == "Airplane mode, Off":
+                            reward = -1
+                            break
+                    else:
+                        reward = 12
+                    print("Yay3 second step made!")
+                else:
+                    reward = 2
+                    print("Yay3 first step made!")
+            elif action_text == "Settings":
+                # Second step: Tap "Settings"
+                reward = 4
+                print("Yay4 second step made!")
+            elif package == "settings" and action_text == "Network & internet":
+                # Third step: Tap "Network & internet"
+                reward = 8
+                print("Yay4 third step made!")
 
-        elif action_text == "Airplane mode" or action_text == "Airplane mode, Off":
-            # Final step: Tap "Airplane mode"
-            reward = 100
-            print("Yay FINISHED!!")
-            done = True
-
-        return reward, done
-
-    def get_reward2(self, obs_history):
-        done = False
-        reward = -1
-
-        output = subprocess.run(["adb", "-s", self.emulator_id, "shell", "settings", "get", "global", "airplane_mode_on"],
-                       capture_output=True, text=True, check=True)
-        airplane_mode = output.stdout.strip()
-
-        if airplane_mode == "1":
-            print("Yay finished!!")
-            reward = 25
-            done = True
-
-
-        return reward, done
-
-    def get_reward3(self, obs_history, ui_options_current):
-        """
-        Evaluates the reward based on the action text.
-
-        Args:
-            action_text (str): The text label of the UI action selected by the agent.
-            current_menu (dict): The current menu where the action will be performed at.
-
-        Returns:
-            Tuple[int, bool]: reward, done
-        """
-        reward = -1
-        done = False
-        package = obs_history[-1]['package']
-        action_text = obs_history[-1]['action_text']
-        previous_action = ""
-        if len(obs_history) > 1:
-            previous_action = obs_history[-2]['action_text']
-
-        # Evaluate the action based on the action
-        if package == "nexuslauncher" and action_text == "swipe up" and previous_action == "":
-        #if current_menu == "Home" and action_text == "swipe up":
-            # First step: Swipe up from the home screen
-            reward = 2
-            # Avoid getting rewards for pointless swiping and only rewarding swiping in the home screen
-            print("Yay4 first step made!")
-        elif action_text == "Settings":
-            # Second step: Tap "Settings"
-            reward = 8
-            print("Yay4 second step made!")
-        elif package == "settings" and action_text == "Network & internet":
-            # Third step: Tap "Network & internet"
-            reward = 32
-            print("Yay4 third step made!")
-
-        elif action_text == "Airplane mode":
+        # if full exploration mode goes straight to this
+        if action_text == "Airplane mode" or action_text == "Airplane mode, Off":
             # Final step: Tap "Airplane mode"
             reward = 100
             print("Yay FINISHED!!")
