@@ -9,7 +9,7 @@ class YoutubeTask:
     Attributes:
         emulator_id (str): The ID of the emulator where the task is performed.
     """
-    def __init__(self, emulator_id, token="Charlie bit my finger! ORIGINAL"):
+    def __init__(self, emulator_id, token="Charlie bit my finger! ORIGINAL", exploration_mode="full_exploration"):
         """
         Initializes the AirplaneTask instance.
 
@@ -18,6 +18,7 @@ class YoutubeTask:
         """
         self.emulator_id = emulator_id
         self.token = token.replace('\\', '')
+        self.exploration_mode = exploration_mode
 
     def reset_task(self):
         """
@@ -45,34 +46,37 @@ class YoutubeTask:
         package = obs_history[-1]['package']
         action_text = obs_history[-1]['action_text']
 
-        # Evaluate the action based on the action
-        if package == "nexuslauncher" and action_text == "swipe up":
-            # First step: Swipe up from the home screen
-            reward = 2
-            # Avoid getting rewards for pointless swiping and only rewarding swiping in the home screen
-            print("Yay first step made!")
-        elif package == "nexuslauncher" and action_text == "YouTube":
-            # Second step: Tap "YouTube"
-            reward = 5
-            print("Yay second step made!")
-        elif (package == "permissioncontroller" and
-              (action_text == "Allow" or action_text == "Don’t allow")):
-            # Third step: Tap "Network & internet"
-            reward = 10
-            print("Yay third step made!")
-        elif package == "youtube" and action_text == "swipe up" and len(ui_options_current) <= 3:
-            reward = 20
-            print("Yay fourth step made!")
-        elif package == "youtube" and action_text == "Accept all" or action_text == "Reject all":
-            reward = 30
-            print("Yay fifth step made!")
-        elif package == "youtube" and action_text == "Search" or action_text == "Search YouTube":
-            reward = 40
-            print("Yay sixth step made!")
-        elif package == "youtube" and action_text == "Text field Search YouTube":
-            reward = 50
-            print("Yay seventh step made!")
-        elif package == "youtube" and self.token in action_text and action_text != self.token:
+        if self.exploration_mode == "guided_restricted" or self.exploration_mode == "guided_open":
+            # Evaluate the action based on the action
+            if package == "nexuslauncher" and action_text == "swipe up":
+                # First step: Swipe up from the home screen
+                reward = 2
+                # Avoid getting rewards for pointless swiping and only rewarding swiping in the home screen
+                print("Yay first step made!")
+            elif package == "nexuslauncher" and action_text == "YouTube":
+                # Second step: Tap "YouTube"
+                reward = 5
+                print("Yay second step made!")
+            elif (package == "permissioncontroller" and
+                  (action_text == "Allow" or action_text == "Don’t allow")):
+                # Third step: Tap "Network & internet"
+                reward = 10
+                print("Yay third step made!")
+            elif package == "youtube" and action_text == "swipe up" and len(ui_options_current) <= 3:
+                reward = 20
+                print("Yay fourth step made!")
+            elif package == "youtube" and action_text == "Accept all" or action_text == "Reject all":
+                reward = 30
+                print("Yay fifth step made!")
+            elif package == "youtube" and action_text == "Search" or action_text == "Search YouTube":
+                reward = 40
+                print("Yay sixth step made!")
+            elif package == "youtube" and action_text == "Text field Search YouTube":
+                reward = 50
+                print("Yay seventh step made!")
+
+        # if full exploration mode goes straight to this
+        if package == "youtube" and self.token in action_text and action_text != self.token:
             reward = 500
             print("Yay FINISHED!!")
             done = True
