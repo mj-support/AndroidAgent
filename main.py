@@ -12,7 +12,7 @@ def train(env, task):
 def predict(env, task):
     model_path = f"models/{task}.zip"
     model = DQN.load(model_path, env=env)
-    #model.learn(total_timesteps=1000, reset_num_timesteps=False)
+    model.learn(total_timesteps=1000, reset_num_timesteps=False)
 
     vec_env = model.get_env()
     obs = vec_env.reset()
