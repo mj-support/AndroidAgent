@@ -7,30 +7,33 @@ import xml.etree.ElementTree as ET
 import os
 import re
 import time
-import subprocess
+
 
 class AndroidEnv(gym.Env):
-    """Custom Gymnasium environment to interact with an Android emulator for performing tasks
-    such as enabling airplane mode. The agent performs actions based on UI elements.
+    """Custom Gymnasium environment to interact with an Android emulator for performing RL tasks
+    such as enabling airplane mode. The agent performs actions based on retrieved UI elements.
     """
 
-    def __init__(self, emulator_id="emulator-5554", task="airplane", exploration_mode="full_exploration", episode_timesteps=15, max_current_ui_options=16):
+    def __init__(self, emulator_id="emulator-5554", task="airplane", exploration_mode="full_exploration", episode_timesteps=100, max_current_ui_options=20):
         """
         Initializes and setups the Android environment.
 
         Args:
-            emulator_id (str):            The ID of the Android emulator to interact with. Defaults to "emulator-5554".
-            task (str):                   The task to perform. Currently, it only supports "airplane" for enabling
-                                          airplane mode. Defaults to "airplane".
-            max_current_ui_options (int):         The maximum number of possible UI-options that can be processed.
-                                          Defaults to 16.
-            episode_timesteps (int):  The maximum number of steps performed per episode. Defaults to 5.
+            emulator_id (str):              The ID of the Android emulator to interact with. Defaults to "emulator-5554".
+            task (str):                     The task to perform. Currently, it only supports the "airplane" or "youtube".
+                                            Defaults to "airplane".
+            exploration_mode (str):         Exploration mode of the agent, also affecting the reward structure.
+                                            Possible modes: "guided_restricted", "guided_open", "full_exploration".
+                                            Defaults to "full_exploration"
+            episode_timesteps (int):        The maximum number of steps performed per episode. Defaults to 100.
+            max_current_ui_options (int):   The maximum number of possible UI-options that can be processed.
+                                            Defaults to 20.
         """
         self.emulator_id = emulator_id
         self.max_current_ui_options = max_current_ui_options
         self.episode_timesteps = episode_timesteps
         self.max_text_length = 20
-        self.max_total_ui_options = 5000
+        self.max_total_ui_options = 25000
         self.exploration_mode = exploration_mode
 
         # By default, the actions are tapping on the UI elements, additional gestures can be added if required.
@@ -48,22 +51,23 @@ class AndroidEnv(gym.Env):
         # Enable specific gestures if the task requires them
         # Assign the specific task required to access the correct reset and reward method
         if task == "airplane":
-            #self.additional_gestures["swipe up"] = True
+            self.additional_gestures["swipe up"] = True
             self.additional_gestures["swipe from top"] = True
             self.max_current_ui_options += 1
             self.token = "airplane"
-            self.task = AirplaneTask(emulator_id=emulator_id, token=self.token, exploration_mode=self.exploration_mode)
+            self.task = AirplaneTask(emulator_id=emulator_id, token=self.token, exploration_mode=self.exploration_mode, episode_timesteps=self.episode_timesteps)
         if task == "youtube":
             self.additional_gestures["swipe up"] = True
             self.max_current_ui_options += 1
             self.token = "Charlie\ bit\ my\ finger!\ ORIGINAL"
-            self.task = YoutubeTask(emulator_id=emulator_id, token=self.token, exploration_mode=self.exploration_mode)
+            self.task = YoutubeTask(emulator_id=emulator_id, token=self.token, exploration_mode=self.exploration_mode, episode_timesteps=self.episode_timesteps)
 
         self.obs = {}
         self.obs_history = []# Current observation
         self.ui_options_total = self._process_additional_gestures()   # List of UI elements
         self.ui_options_current = []
         self.current_step = 0   # Current step in the episode
+        self.episode_rewards = 0
 
         # Define the action space
         self.action_space = spaces.Discrete(self.max_current_ui_options)
@@ -89,6 +93,7 @@ class AndroidEnv(gym.Env):
         """
         print("Reset, Length: ", len(self.ui_options_total))
         self.current_step = 0
+        self.episode_rewards = 0
         info = {}
         self.obs_history = [{}]
         self.ui_options_current = self._process_additional_gestures()
@@ -137,21 +142,18 @@ class AndroidEnv(gym.Env):
             reward, done = self.task.get_reward(self.obs_history, self.ui_options_current)
 
             if action_text != "Power menu" and action_text != "Emergency":
-                if reward > 0 or self.exploration_mode == "full_exploration" or self.exploration_mode == "guided_open":
+                if reward >= 0 or self.exploration_mode == "full_exploration" or self.exploration_mode == "guided_open":
                     self._perform_action(bounds)  # Perform the action on the emulator if valid
                     self._get_obs()  # Get new observation
                 elif self.exploration_mode == "guided_restricted":
                     action_eval = "wrong"
-        else:
-            reward = -3
 
         if action_text.startswith("swipe"):
             print("{0} action is {1} -> {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
         else:
             print("{0} action is {1} -> TAP {2} -> Reward: {3}".format(action_eval, action, action_text, reward))
 
-        if done:
-            reward -= 2 * self.current_step
+        self.episode_rewards += reward
 
         # Terminate the episode if the maximum steps are reached
         if self.current_step == self.episode_timesteps:
@@ -160,7 +162,13 @@ class AndroidEnv(gym.Env):
         return self.obs, reward, done, False, {}
 
     def _process_additional_gestures(self):
-        """Add additional gestures like swiping to the UI options."""
+        """
+        Add additional gestures like swiping to the UI options.
+        
+        Returns:
+            gesture_list (list): List of additional gestures.
+        """
+        
         gesture_list = []
         for gesture in self.additional_gestures:
             if self.additional_gestures[gesture]:
@@ -184,9 +192,6 @@ class AndroidEnv(gym.Env):
     def _get_obs(self):
         """
         Update the observation space by reading the emulator's current UI state.
-
-        Args:
-            action (int, optional): The previous action performed. Defaults to None.
         """
         # Read the XML dump of the current UI
         try:
@@ -224,7 +229,7 @@ class AndroidEnv(gym.Env):
         """
         Recursively extract relevant UI elements from the XML node.
 
-        Data to extract: index, text, resource_id, class, package, content_desc, checkable, checked, clickable,
+        Possible data to extract: index, text, resource_id, class, package, content_desc, checkable, checked, clickable,
                          enabled, focusable, scrollable, long-clickable, password, selected, bounds
 
         Args:
@@ -252,6 +257,7 @@ class AndroidEnv(gym.Env):
 
                 duplicate = False
                 for ui_option in self.ui_options_total:
+                    # ui_option = self._process_ui_options()
                     if ui_option["text"] == element_name and ui_option["package"] == node_package:
                         duplicate = True
                         node_data["id"] = ui_option["id"]
@@ -266,6 +272,15 @@ class AndroidEnv(gym.Env):
             self._extract_nodes(child)
 
     def _extract_element_name(self, node):
+        """
+        Extracts the name of a UI element from the XML node.
+
+        Args:
+            node (Element): XML node representing a UI element.
+            
+        Returns:
+            element_name (str): name of the UI element.
+        """
         element_name = ""
         node_text = node.get("text")
         node_content_desc = node.get("content-desc")
@@ -287,29 +302,26 @@ class AndroidEnv(gym.Env):
         Perform an action (e.g. tap or swipe) on the emulator.
 
         Args:
-            action_text (str): The action to perform (e.g., "swipe up").
             bounds (tuple): The coordinates of the UI-element or for the gesture action.
         """
         action_text = self.obs_history[-1]["action_text"]
         if action_text.startswith("swipe"):
-            command = "adb -s {4} shell input swipe {0} {1} {2} {3}".format(
-                bounds[0], bounds[1], bounds[2], bounds[3], self.emulator_id)
+            os.system("adb -s {4} shell input swipe {0} {1} {2} {3}".format(bounds[0], bounds[1], bounds[2], bounds[3], self.emulator_id))
+            time.sleep(1)
         elif action_text.startswith("Text field"):
-            command = "adb -s {1} shell input text '{0}'".format(self.token, self.emulator_id)
-            os.system(command)
-            command = "adb -s {0} shell input keyevent ENTER".format(self.emulator_id)
+            os.system("adb -s {1} shell input text '{0}'".format(self.token, self.emulator_id))
+            os.system("adb -s {0} shell input keyevent ENTER".format(self.emulator_id))
         else:
             coord_x = int((bounds[0] + bounds[2]) / 2)
             coord_y = int((bounds[1] + bounds[3]) / 2)
-            command = "adb -s {2} shell input tap {0} {1}".format(coord_x, coord_y, self.emulator_id)
+            os.system("adb -s {2} shell input tap {0} {1}".format(coord_x, coord_y, self.emulator_id))
 
         # Execute the command and update the UI state by extracting the UI-elements on the new screen
-        os.system(command)
         time.sleep(1)
         os.system("adb -s {0} shell uiautomator dump".format(self.emulator_id))
-        time.sleep(0.1)
+        time.sleep(0.3)
         os.system("adb -s {0} pull /sdcard/window_dump.xml window_emulator_{0}.xml".format(self.emulator_id))
-        time.sleep(0.2)
+        time.sleep(0.5)
 
     def _map_action(self, action):
         """
@@ -318,8 +330,7 @@ class AndroidEnv(gym.Env):
         In order to reduce the amount of invalid actions, the actions are mapped to the possible UI-options.
 
         Args:
-            action (int): The discrete action selected by the RL agent,
-                          which corresponds to an index in the action space.
+            action (int): The discrete action selected by the RL agent, which corresponds to an index in the action space.
 
         Returns:
             Tuple[int, str, tuple, str]: action, action_text, bounds, action_eval
@@ -341,6 +352,9 @@ class AndroidEnv(gym.Env):
         return action, action_text, bounds, action_eval
 
     def _get_menu_history(self):
+        """
+        Store the shortest path of the menu history to avoid repetition
+        """
         current_ui_option_id = self.obs_history[-1]["ui_option_id"]
         index = 0
         repetition = False
@@ -360,15 +374,12 @@ class AndroidEnv(gym.Env):
                         self.obs["history"][index] = current_ui_option_id
             index += 1
 
-
-
-
     def _process_ui_options(self):
         """
         Process the UI options and create observation arrays for "index" and "text".
 
         Returns:
-            dict: A dictionary containing the processed "index" and "text" arrays.
+            ui_options (dict): A dictionary containing the processed "index" and "text" arrays.
         """
         # Initialize arrays with default values (-1)
         text_array = -1 * np.ones((self.max_current_ui_options, self.max_text_length), dtype=np.uint8)  # Für "text"
@@ -385,13 +396,13 @@ class AndroidEnv(gym.Env):
 
     def _encode_text(self, text):
         """
-        Encode the UI-text into numeric array to allow the processing of the observation_space.
+        Additional feature to cncode the UI-text into numeric array to allow the processing of the observation_space.
 
         Args:
             text (str): The text to encode.
 
         Returns:
-            np.ndarray: Encoded text as a numeric array.
+            encoded (np.ndarray): Encoded text as a numeric array.
         """
         encoded = np.zeros((self.max_text_length,), dtype=np.uint8)
         for i, char in enumerate(text[:self.max_text_length]):
