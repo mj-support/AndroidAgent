@@ -396,7 +396,7 @@ class AndroidEnv(gym.Env):
 
     def _encode_text(self, text):
         """
-        Additional feature to cncode the UI-text into numeric array to allow the processing of the observation_space.
+        Additional feature to encode the UI-text into numeric array to allow the processing of the observation_space.
 
         Args:
             text (str): The text to encode.
