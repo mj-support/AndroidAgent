@@ -1,4 +1,7 @@
-# AndroidAgent: Task completion in Android OS using Reinforcement Learning
+# AndroidAgent: Navigating Android with Reinforcement Learning
+
+Modern mobile operating systems feature hierarchical user interfaces (UIs) with nested menus that can challenge unexperienced users, compound usability issues and limit accessibility. The vast action space inherent in mobile interfaces including diverse gesture possibilities and the potential for each action to lead to incorrect or suboptimal paths further complicate usability testing.  
+This paper addresses these challenges by introducing AndroidAgent, a Reinforcement Learning (RL) framework that leverages Android’s internal view hierarchies. AndroidAgent achieves training success rates above 90\% per episode while converging within a significantly low number of timesteps. The results demonstrate that its constrained action and observation space maintain robustness while reducing irrelevant exploration, even in unguided scenarios. AndroidAgent provides an efficient tool to gain insights for usability, with quantifying the intuitiveness of the interface through metrics such as minimal path length until task completion. This work bridges RL with practical UI, offering developers actionable insights to streamline UI design and enhance user experience in Android environments.
 
 ## Getting Started
 
@@ -31,7 +34,7 @@ $ source ~/.zshrc
 
 #### Setup Emulator
 
-To use ```models/airplane.zip```, please follow the next steps. You can also configure your own Android Virtual Device (AVD) with your own settings instead. In this case you might have to start a new training run to let the agent adapt to a the new evironment. You can see the configured AVDs with ```$ emulator -list-avds```.
+First you have configure your own Android Virtual Device (AVD). You can see the configured AVDs with ```$ emulator -list-avds```.
 
 1. To configure your own Android Virtual Device (AVD) you need to open Android Studio.
 2. Click on 'More Actions' in the 'Welcome to Android Studio'-welcome menu and select 'Virtual Device Manager'.
@@ -56,4 +59,4 @@ You can start the training with the following command
 $ python3 main.py
 ```
 The resulting model will be saved in the ```models/``` directory. 
-So far, only the airplane task has been implemented, but the code is designed to allow smooth expansion for a wide range of tasks.
+So far, only the airplane and youtube task have been implemented, but the code is designed to allow smooth expansion for a wide range of tasks.
